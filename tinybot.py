@@ -46,8 +46,9 @@ class TinychatBot(pinylib.TinychatRTCClient):
 
             api = pinylib.apis.tinychat.user_info(user.account)
             if api is not None:
-                user.tinychat_id = api['tinychat_id']
-                user.last_login = api['last_active']
+                if 'tinychat_id' in api:
+                    user.tinychat_id = api['tinychat_id']
+                    user.last_login = api['last_active']
 
         if guest:
             log.debug('checking guest entrance: %s' % user.nick)
@@ -388,7 +389,11 @@ class TinychatBot(pinylib.TinychatRTCClient):
 
                 elif cmd == prefix + 'unb':
                     self.do_unban(cmd_arg)
-
+            
+            if pinylib.CONFIG.B_PUBLIC_CMD and self.active_user.user_level == 5:
+                if cmd == prefix + 'skip':
+                    self.do_skip_self()
+                    
             if (pinylib.CONFIG.B_PUBLIC_CMD and self.has_level(5)) or self.active_user.user_level < 5:
                 if cmd == prefix + 'v':
                     self.do_version()
@@ -1367,6 +1372,25 @@ class TinychatBot(pinylib.TinychatRTCClient):
                     self.send_chat_msg('No user named: %s in the banlist.' % user_name)
 
     # Public (Level 5) Command Methods.
+    def do_skip_self(self):
+        """ Skip to the next item in the playlist. """
+        if self.is_client_mod:
+            if self.active_user.nick == self.playlist.track.owner:
+                self.cancel_timer()
+                next_track = self.playlist.next_track
+                if next_track is None:
+                    track = self.playlist.track
+                    self.send_yut_stop(track.id, track.time)
+                    self.playlist.stop()
+                else:
+                    self.send_yut_play(next_track.id, next_track.time, next_track.title)
+                    self.timer(next_track.time)
+            else:
+                for i in range(len(self.playlist.track_list)):
+                    if self.active_user.nick == self.playlist.track_list[i].owner:
+                        self.playlist.delete(i)
+                        break
+
     def do_playlist_status(self):
         """ Shows the playlist queue. """
         if self.is_client_mod:
@@ -1447,6 +1471,8 @@ class TinychatBot(pinylib.TinychatRTCClient):
                 self.send_chat_msg('Please specify youtube title, id or link.')
             else:
                 _youtube = youtube.search(search_str)
+                if _youtube is None:
+                    _youtube = youtube.search_channel(search_str)
                 if _youtube is None:
                     log.warning('youtube request returned: %s' % _youtube)
                     self.send_chat_msg('Could not find video: ' + search_str)

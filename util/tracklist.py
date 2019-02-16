@@ -97,7 +97,7 @@ class PlayList:
         :rtype: Track | None
         """
         if len(self.track_list) > 0:
-            if self.track_index <= len(self.track_list):  # self.last_index:
+            if self.track_index < len(self.track_list):  # self.last_index:
                 next_track = self.track_list[self.track_index]
                 self.current_track = next_track
                 self.current_track.start = time.time()
@@ -192,8 +192,9 @@ class PlayList:
     def stop(self):
         """ Stop a track. """
         self.is_paused = False
-        self.current_track.start = 0
-        self.current_track.pause = 0
+        # self.current_track.start = 0
+        # self.current_track.pause = 0
+        self.current_track = None
 
     def add(self, owner, track):
         """

@@ -2,6 +2,10 @@
 ACCOUNT = ''
 # Password for account
 PASSWORD = ''
+# Tinychat nickname.
+NICKNAME = ''
+# Room of account
+ROOM_NAME = ''
 # Fallback rtc version.
 FALLBACK_RTC_VERSION = '2.0.22-4'
 # Log chat messages and events.

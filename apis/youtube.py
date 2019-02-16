@@ -4,6 +4,7 @@ import logging
 
 import util.web
 import _track
+import regex as re
 from util import string_util
 
 
@@ -15,6 +16,12 @@ REFERER = 'https://tinychat.com'
 
 SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search?' \
              'type=video&key={0}&maxResults=50&q={1}&part=snippet'
+
+SEARCH_BY_CHANNEL_ID_URL = 'https://www.googleapis.com/youtube/v3/search?' \
+             'type=video&key={0}&order=date&maxResults=50&channelId={1}&part=snippet'
+
+SEARCH_CHANNEL_URL = 'https://www.googleapis.com/youtube/v3/search?' \
+             'type=channel&key={0}&maxResults=50&q={1}&part=snippet'
 
 PLAYLIST_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search?' \
                       'type=playlist&key={0}&maxResults=50&q={1}&part=snippet'
@@ -29,7 +36,7 @@ VIDEO_DETAILS_URL = 'https://www.googleapis.com/youtube/v3/videos?' \
 log = logging.getLogger(__name__)
 
 
-def search(search_term):
+def search(search_term=None, channel_id=None):
     """
     Searches the youtube API for a youtube video matching the search term.
 
@@ -42,8 +49,12 @@ def search(search_term):
     :return: A Track object or None on error.
     :rtype: Track | None
     """
-    url = SEARCH_URL.format(API_KEY, util.web.quote(search_term.encode('ascii', 'ignore')))
-    response = util.web.http_get(url=url, json=True, referer=REFERER)
+    if search_term is not None:
+        url = SEARCH_URL.format(API_KEY, util.web.quote(search_term.encode('utf-8', 'ignore')))
+        response = util.web.http_get(url=url, json=True, referer=REFERER)
+    elif channel_id is not None:
+        url = SEARCH_BY_CHANNEL_ID_URL.format(API_KEY, util.web.quote(channel_id.encode('ascii', 'ignore')))
+        response = util.web.http_get(url=url, json=True, referer=REFERER)
 
     _error = None
     if response['json'] is not None:
@@ -55,9 +66,38 @@ def search(search_term):
                     video_id = item['id']['videoId']
                     details = video_details(video_id)
 
-                    if details is not None:
+                    if details is not None and not(re.search(r'l(y|i)ric', details.title.lower())):
                         track = details
                         break
+
+            except KeyError as ke:
+                _error = ke
+            finally:
+                if _error is not None:
+                    log.error(_error)
+                    return None
+
+        return track
+
+def search_channel(search_term):
+    url = SEARCH_CHANNEL_URL.format(API_KEY, util.web.quote(search_term.encode('ascii', 'ignore')))
+    response = util.web.http_get(url=url, json=True, referer=REFERER)
+
+    _error = None
+    if response['json'] is not None:
+        track = None
+        if 'items' in response['json']:
+
+            try:
+                channel_id = None
+                for item in response['json']['items']:
+                    channel_id = item['id']['channelId']
+
+                    if channel_id is not None:
+                        break
+
+                if channel_id is not None:
+                    track = search(channel_id=channel_id)
 
             except KeyError as ke:
                 _error = ke
@@ -234,10 +274,11 @@ def video_details(video_id, check=True):
 
                     video_time = string_util.convert_to_seconds(content_details['duration'])
                     video_title = response['json']['items'][0]['snippet']['title']
+                    channel_title = response['json']['items'][0]['snippet']['channelTitle']
                     image_medium = response['json']['items'][0]['snippet']['thumbnails']['medium']['url']
 
                     track = _track.Track(video_id=video_id, video_time=video_time, video_title=video_title,
-                                         image=image_medium)
+                                         image=image_medium, channel_title=channel_title)
 
                 except KeyError as ke:
                     _error = ke

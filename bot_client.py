@@ -7,16 +7,27 @@ log = logging.getLogger(__name__)
 
 
 def main():
-    room_name = raw_input('Enter room name: ').strip()
+    if tinybot.pinylib.CONFIG.ROOM_NAME:
+        room_name = tinybot.pinylib.CONFIG.ROOM_NAME
+    else:
+        room_name = raw_input('Enter room name: ').strip()
+
     if tinybot.pinylib.CONFIG.ACCOUNT and tinybot.pinylib.CONFIG.PASSWORD:
         bot = tinybot.TinychatBot(room=room_name, account=tinybot.pinylib.CONFIG.ACCOUNT,
                                   password=tinybot.pinylib.CONFIG.PASSWORD)
     else:
         bot = tinybot.TinychatBot(room=room_name)
 
-    bot.nickname = raw_input('Enter nick name: (optional) ').strip()
 
-    do_login = raw_input('Login? [enter=no] ')
+    if tinybot.pinylib.CONFIG.NICKNAME:
+        bot.nickname = tinybot.pinylib.CONFIG.NICKNAME
+    else:
+        bot.nickname = raw_input('Enter nick name: (optional) ').strip()
+
+    if tinybot.pinylib.CONFIG.ACCOUNT and tinybot.pinylib.CONFIG.PASSWORD:
+        do_login = True
+    else:
+        do_login = raw_input('Login? [enter=no] ')
     if do_login:
         if not bot.account:
             bot.account = raw_input('Account: ').strip()
